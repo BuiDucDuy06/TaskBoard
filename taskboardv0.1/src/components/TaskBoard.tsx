@@ -69,6 +69,16 @@ export function TaskBoard() {
     );
   };
 
+  const editTask = (id: number, title: string) => {
+  setTasks((prevTasks) =>
+    prevTasks.map((task) =>
+      task.id === id
+        ? { ...task, title }
+        : task
+    )
+  );
+};
+
   return (
     <main>
       <header>
@@ -90,6 +100,7 @@ export function TaskBoard() {
             tasks={tasks}
             onComplete={completeTask}
             onDelete={deleteTask}
+            onEdit={editTask}
           />
         ))}
       </div>

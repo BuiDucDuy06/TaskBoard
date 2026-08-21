@@ -7,6 +7,7 @@ type TaskColumnProps = {
   tasks: Task[];
   onComplete: (id: number) => void;
   onDelete: (id: number) => void;
+  onEdit: (id: number, title: string) => void;
 };
 
 export function TaskColumn({
@@ -15,6 +16,7 @@ export function TaskColumn({
   tasks,
   onComplete,
   onDelete,
+  onEdit,
 }: TaskColumnProps) {
   const columnTasks = tasks.filter(
     (task) => task.status === status
@@ -35,6 +37,7 @@ export function TaskColumn({
             task={task}
             onComplete={onComplete}
             onDelete={onDelete}
+            onEdit={onEdit}
           />
         ))
       )}
