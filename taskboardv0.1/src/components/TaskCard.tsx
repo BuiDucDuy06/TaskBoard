@@ -44,38 +44,77 @@ export function TaskCard({
   };
   if (isEditing) {
     return (
-      <div>
-        <input
-          value={draftTitle}
-          onChange={(e) => {
-            setDraftTitle(e.target.value);
-            if (error) setError("");
-          }}
-        />
+      <article className="group rounded-xl border border-slate-800 bg-slate-950/80 p-4 transition hover:border-slate-700 hover:bg-slate-950">
+        <div>
+          <input
+            className="mb-3 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+            value={draftTitle}
+            onChange={(e) => {
+              setDraftTitle(e.target.value);
+              if (error) setError("");
+            }}
+          />
 
-        {error && <p>{error}</p>}
-
-        <button onClick={saveEdit}>Save</button>
-        <button onClick={cancelEdit}>Cancel</button>
-      </div>
+          {error && <p>{error}</p>}
+          <div className="flex gap-2">
+            <button
+              onClick={saveEdit}
+              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium hover:bg-indigo-500"
+            >
+              Save
+            </button>
+            <button
+              onClick={cancelEdit}
+              className="rounded-lg bg-slate-600 px-3 py-1.5 text-xs font-medium hover:bg-slate-500"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </article>
     );
   }
   return (
     <div>
-      <h3>{task.title}</h3>
-      <p>Status: {task.status}</p>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <h3 className="text-sm font-medium leading-5 text-slate-200">
+          {task.title}
+        </h3>
+        <span
+          className={`h-2 w-2 shrink-0 rounded-full ${
+            task.status === "DONE"
+              ? "bg-emerald-400"
+              : task.status === "IN_PROGRESS"
+                ? "bg-amber-400"
+                : "bg-slate-500"
+          }`}
+        />
+      </div>
 
-      <button onClick={startEdit}>Edit</button>
-
-      {task.status !== "DONE" && (
-        <button onClick={() => onComplete(task.id)}>
-          Complete
+      <div className="flex items-center gap-2 opacity-70 transition group-hover:opacity-100">
+        <button
+          onClick={startEdit}
+          className="rounded-md bg-slate-800 px-2.5 py-1 text-xs text-slate-300 hover:bg-slate-700"
+        >
+          Edit
         </button>
-      )}
 
-      <button onClick={() => onDelete(task.id)}>
-        Delete
-      </button>
+        {task.status !== "DONE" && (
+          <button
+            onClick={() => onComplete(task.id)}
+            className="rounded-md bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-400 hover:bg-emerald-500/20"
+          >
+            Complete
+          </button>
+        )}
+
+        <button
+          onClick={() => onDelete(task.id)}
+          className="rounded-md bg-red-500/10 px-2.5 py-1 text-xs text-red-400 hover:bg-red-500/20"
+        >
+          Delete
+        </button>
+      </div>
     </div>
   );
 }
