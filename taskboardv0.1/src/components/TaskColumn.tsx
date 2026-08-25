@@ -1,4 +1,4 @@
-import type { Task, TaskStatus } from "../types";
+import type { Task, TaskStatus, TaskPriority } from "../types";
 import { TaskCard } from "./TaskCard";
 
 type TaskColumnProps = {
@@ -7,7 +7,8 @@ type TaskColumnProps = {
   tasks: Task[];
   onComplete: (id: number) => void;
   onDelete: (id: number) => void;
-  onEdit: (id: number, title: string) => void;
+  onEdit: (id: number, title: string, priority: TaskPriority, dueDate?: string) => void;
+  isOverdue: (task: Task) => boolean;
 };
 
 export function TaskColumn({
@@ -17,6 +18,7 @@ export function TaskColumn({
   onComplete,
   onDelete,
   onEdit,
+  isOverdue,
 }: TaskColumnProps) {
   const columnTasks = tasks.filter(
     (task) => task.status === status
@@ -41,6 +43,7 @@ export function TaskColumn({
               onComplete={onComplete}
               onDelete={onDelete}
               onEdit={onEdit}
+              isOverdue={isOverdue(task)}
             />
           ))
         )}

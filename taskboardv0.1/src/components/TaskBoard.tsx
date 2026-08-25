@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Task, TaskStatus } from "../types";
+import type { Task, TaskStatus, TaskPriority } from "../types";
 import { TaskForm } from "./TaskForm";
 import { TaskColumn } from "./TaskColumn";
 
@@ -8,21 +8,28 @@ const initialTasks: Task[] = [
     id: 1,
     title: "Setup project",
     status: "TODO",
+    priority: "HIGH",
+    dueDate: "2026-08-20",
   },
   {
     id: 2,
     title: "Build board",
     status: "IN_PROGRESS",
+    priority: "MEDIUM",
+    dueDate: "2026-08-28",
   },
   {
     id: 3,
     title: "Read docs",
     status: "DONE",
+    priority: "HIGH",
+    dueDate: "2026-08-18",
   },
   {
     id: 4,
     title: "Learn state",
     status: "TODO",
+    priority: "LOW",
   },
 ];
 
@@ -35,18 +42,39 @@ const columns: {
   { status: "DONE", title: "DONE" },
 ];
 
+const isOverdue = (task: Task) => {
+  if (!task.dueDate) return false;
+
+  if (task.status === "DONE") return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const dueDate = new Date(`${task.dueDate}T00:00:00`);
+
+  return dueDate < today;
+};
+
 export function TaskBoard() {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
 
   const doneCount = tasks.filter((task) => task.status === "DONE").length;
 
-  const addTask = (title: string) => {
+  const overdueCount = tasks.filter(isOverdue).length;
+    
+  const highCount = tasks.filter(
+    (task) => task.priority === "HIGH"
+  ).length;
+
+  const addTask = (title: string, priority: TaskPriority, dueDate?: string) => {
     setTasks((prevTasks) => [
       ...prevTasks,
       {
         id: Date.now(),
         title,
         status: "TODO",
+        priority,
+        dueDate,
       },
     ]);
   };
@@ -63,9 +91,16 @@ export function TaskBoard() {
     setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
   };
 
-  const editTask = (id: number, title: string) => {
+  const editTask = (
+    id: number,
+    title: string,
+    priority: TaskPriority,
+    dueDate?: string,
+  ) => {
     setTasks((prevTasks) =>
-      prevTasks.map((task) => (task.id === id ? { ...task, title } : task)),
+      prevTasks.map((task) =>
+        task.id === id ? { ...task, title, priority, dueDate } : task,
+      ),
     );
   };
 
@@ -91,12 +126,28 @@ export function TaskBoard() {
                 {doneCount}
               </span>
             </div>
+            <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-2">
+              <span className="text-xs text-red-400">Overdue</span>
+
+              <span className="ml-2 font-semibold text-red-300">
+                {overdueCount}
+              </span>
+            </div>
+            <div className="rounded-xl border border-orange-900/50 bg-orange-950/30 px-4 py-2">
+              <span className="text-xs text-orange-400">
+                High
+              </span>
+
+              <span className="ml-2 font-semibold text-orange-300">
+                {highCount}
+              </span>
+            </div>
           </div>
         </header>
       </div>
 
       <div className="mx-auto mb-8 max-w-6xl">
-      <TaskForm onAdd={addTask} />
+        <TaskForm onAdd={addTask} />
       </div>
 
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-3">
@@ -109,6 +160,7 @@ export function TaskBoard() {
             onComplete={completeTask}
             onDelete={deleteTask}
             onEdit={editTask}
+            isOverdue={isOverdue}
           />
         ))}
       </div>
