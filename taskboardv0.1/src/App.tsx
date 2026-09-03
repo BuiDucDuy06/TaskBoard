@@ -1,7 +1,7 @@
-import { TaskBoard } from "./components/TaskBoard";
+import { TaskBoardPage } from "./components/TaskBoardPage";
 
 function App() {
-  return <TaskBoard />;
+  return <TaskBoardPage />;
 }
 
 export default App;

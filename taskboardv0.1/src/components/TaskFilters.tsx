@@ -5,11 +5,15 @@ import type {
   SortDirection,
 } from "../types";
 
-type TaskFilterBarProps = {
+type TaskFiltersProps = {
   search: string;
+
   status: "ALL" | TaskStatus;
+
   priority: "ALL" | TaskPriority;
+
   sortBy: SortBy;
+
   sortDirection: SortDirection;
 
   onSearchChange: (value: string) => void;
@@ -33,7 +37,7 @@ type TaskFilterBarProps = {
   onReset: () => void;
 };
 
-export function TaskFilterBar({
+export function TaskFilters({
   search,
   status,
   priority,
@@ -45,7 +49,7 @@ export function TaskFilterBar({
   onSortByChange,
   onSortDirectionChange,
   onReset,
-}: TaskFilterBarProps) {
+}: TaskFiltersProps) {
   return (
     <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl">
       <div className="mb-5">
@@ -59,7 +63,7 @@ export function TaskFilterBar({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        {/* Search */}
+        {/* SEARCH */}
         <div className="lg:col-span-2">
           <label className="mb-2 block text-xs font-medium text-slate-400">
             Search
@@ -76,7 +80,7 @@ export function TaskFilterBar({
           />
         </div>
 
-        {/* Status */}
+        {/* STATUS */}
         <div>
           <label className="mb-2 block text-xs font-medium text-slate-400">
             Status
@@ -86,21 +90,32 @@ export function TaskFilterBar({
             value={status}
             onChange={(e) =>
               onStatusChange(
-                e.target.value as "ALL" | TaskStatus,
+                e.target.value as
+                  | "ALL"
+                  | TaskStatus,
               )
             }
             className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-indigo-500"
           >
-            <option value="ALL">ALL</option>
-            <option value="TODO">TODO</option>
+            <option value="ALL">
+              ALL
+            </option>
+
+            <option value="TODO">
+              TODO
+            </option>
+
             <option value="IN_PROGRESS">
               IN PROGRESS
             </option>
-            <option value="DONE">DONE</option>
+
+            <option value="DONE">
+              DONE
+            </option>
           </select>
         </div>
 
-        {/* Priority */}
+        {/* PRIORITY */}
         <div>
           <label className="mb-2 block text-xs font-medium text-slate-400">
             Priority
@@ -117,14 +132,25 @@ export function TaskFilterBar({
             }
             className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-indigo-500"
           >
-            <option value="ALL">ALL</option>
-            <option value="LOW">LOW</option>
-            <option value="MEDIUM">MEDIUM</option>
-            <option value="HIGH">HIGH</option>
+            <option value="ALL">
+              ALL
+            </option>
+
+            <option value="LOW">
+              LOW
+            </option>
+
+            <option value="MEDIUM">
+              MEDIUM
+            </option>
+
+            <option value="HIGH">
+              HIGH
+            </option>
           </select>
         </div>
 
-        {/* Sort by */}
+        {/* SORT */}
         <div>
           <label className="mb-2 block text-xs font-medium text-slate-400">
             Sort by
@@ -154,7 +180,7 @@ export function TaskFilterBar({
         </div>
       </div>
 
-      {/* Direction + Reset */}
+      {/* DIRECTION + RESET */}
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="w-full sm:w-48">
           <label className="mb-2 block text-xs font-medium text-slate-400">
@@ -170,8 +196,13 @@ export function TaskFilterBar({
             }
             className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-indigo-500"
           >
-            <option value="ASC">ASC</option>
-            <option value="DESC">DESC</option>
+            <option value="ASC">
+              ASC
+            </option>
+
+            <option value="DESC">
+              DESC
+            </option>
           </select>
         </div>
 
