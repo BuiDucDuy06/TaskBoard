@@ -1,12 +1,8 @@
 import { useEffect, useState } from "react";
+import type { CreateTaskInput, TaskPriority } from "../types";
+import { validateTaskInput, type TaskFormErrors} from "../utils/taskValidation";
 
-import type { TaskPriority } from "../types";
-
-type TaskFormValues = {
-  title: string;
-  priority: TaskPriority;
-  dueDate?: string;
-};
+type TaskFormValues = CreateTaskInput;
 
 type TaskFormProps = {
   mode: "create" | "edit";
@@ -22,6 +18,7 @@ type TaskFormProps = {
 
 const defaultValues: TaskFormValues = {
   title: "",
+  description: "",
   priority: "MEDIUM",
   dueDate: "",
 };
@@ -33,37 +30,47 @@ export function TaskForm({
   onCancel,
   isSubmitting = false,
 }: TaskFormProps) {
-  const [title, setTitle] = useState("");
+  const [formValues, setFormValues] = useState<TaskFormValues>(defaultValues);
 
-  const [priority, setPriority] = useState<TaskPriority>("MEDIUM");
-
-  const [dueDate, setDueDate] = useState("");
-
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState<TaskFormErrors>({});
 
   useEffect(() => {
-    const values = initialValues ?? defaultValues;
+    setFormValues(initialValues ?? defaultValues);
 
-    setTitle(values.title);
-    setPriority(values.priority);
-    setDueDate(values.dueDate ?? "");
-    setError("");
+    setErrors({});
   }, [initialValues]);
+
+  const updateField = <K extends keyof TaskFormValues>(
+    field: K,
+    value: TaskFormValues[K],
+  ) => {
+    setFormValues((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    setErrors((prev) => ({
+      ...prev,
+      [field]: undefined,
+    }));
+  };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const trimmedTitle = title.trim();
+    const validationErrors = validateTaskInput(formValues);
 
-    if (!trimmedTitle) {
-      setError("Task title không được để trống.");
+    setErrors(validationErrors);
+
+    if (Object.keys(validationErrors).length > 0) {
       return;
     }
 
     onSubmit({
-      title: trimmedTitle,
-      priority,
-      dueDate: dueDate || undefined,
+      title: formValues.title.trim(),
+      description: formValues.description?.trim() || undefined,
+      priority: formValues.priority,
+      dueDate: formValues.dueDate || undefined,
     });
   };
 
@@ -76,42 +83,85 @@ export function TaskForm({
           htmlFor="task-title"
           className="mb-2 block text-sm font-medium text-slate-300"
         >
-          Title
+          Title <span className="text-red-400">*</span>
         </label>
 
         <input
           id="task-title"
           type="text"
-          value={title}
-          onChange={(event) => {
-            setTitle(event.target.value);
-
-            if (error) {
-              setError("");
-            }
-          }}
+          value={formValues.title}
+          onChange={(event) => updateField("title", event.target.value)}
           placeholder="Enter task title..."
           disabled={isSubmitting}
-          className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50"
+          maxLength={100}
+          className={`w-full rounded-xl border bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 disabled:opacity-50 ${
+            errors.title
+              ? "border-red-500 focus:ring-2 focus:ring-red-500/20"
+              : "border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+          }`}
         />
 
-        {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+        {errors.title && (
+          <p className="mt-2 text-sm text-red-400">{errors.title}</p>
+        )}
       </div>
 
+      <div>
+        <label
+          htmlFor="task-description"
+          className="mb-2 block text-sm font-medium text-slate-300"
+        >
+          Description
+        </label>
+
+        <textarea
+          id="task-description"
+          value={formValues.description ?? ""}
+          onChange={(event) => updateField("description", event.target.value)}
+          placeholder="Enter task description..."
+          disabled={isSubmitting}
+          maxLength={500}
+          rows={4}
+          className={`w-full resize-none rounded-xl border bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 disabled:opacity-50 ${
+            errors.description
+              ? "border-red-500 focus:ring-2 focus:ring-red-500/20"
+              : "border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+          }`}
+        />
+
+        <div className="mt-1 flex justify-between">
+          {errors.description ? (
+            <p className="text-sm text-red-400">{errors.description}</p>
+          ) : (
+            <span />
+          )}
+
+          <span className="text-xs text-slate-500">
+            {(formValues.description ?? "").length}
+            /500
+          </span>
+        </div>
+      </div>
       <div>
         <label
           htmlFor="task-priority"
           className="mb-2 block text-sm font-medium text-slate-300"
         >
-          Priority
+          Priority <span className="text-red-400">*</span>
         </label>
 
         <select
           id="task-priority"
-          value={priority}
-          onChange={(event) => setPriority(event.target.value as TaskPriority)}
+          value={formValues.priority}
+          onChange={(event) =>
+            updateField("priority", event.target.value as TaskPriority)
+          }
           disabled={isSubmitting}
-          className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-indigo-500 disabled:opacity-50"
+          className={`w-full rounded-xl border bg-slate-950 px-4 py-3 text-sm text-white outline-none disabled:opacity-50 ${
+            errors.priority
+              ? "border-red-500"
+              : "border-slate-700 focus:border-indigo-500"
+          }`}
         >
           <option value="LOW">LOW</option>
 
@@ -119,8 +169,11 @@ export function TaskForm({
 
           <option value="HIGH">HIGH</option>
         </select>
-      </div>
 
+        {errors.priority && (
+          <p className="mt-2 text-sm text-red-400">{errors.priority}</p>
+        )}
+      </div>
       <div>
         <label
           htmlFor="task-due-date"
@@ -132,13 +185,20 @@ export function TaskForm({
         <input
           id="task-due-date"
           type="date"
-          value={dueDate}
-          onChange={(event) => setDueDate(event.target.value)}
+          value={formValues.dueDate ?? ""}
+          onChange={(event) => updateField("dueDate", event.target.value)}
           disabled={isSubmitting}
-          className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-indigo-500 disabled:opacity-50"
+          className={`w-full rounded-xl border bg-slate-950 px-4 py-3 text-sm text-white outline-none disabled:opacity-50 ${
+            errors.dueDate
+              ? "border-red-500"
+              : "border-slate-700 focus:border-indigo-500"
+          }`}
         />
-      </div>
 
+        {errors.dueDate && (
+          <p className="mt-2 text-sm text-red-400">{errors.dueDate}</p>
+        )}
+      </div>
       <div className="flex justify-end gap-3 pt-2">
         <button
           type="button"

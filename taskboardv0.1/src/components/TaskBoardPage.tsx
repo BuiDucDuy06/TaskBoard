@@ -6,10 +6,11 @@ import type {
   TaskStatus,
   SortBy,
   SortDirection,
+  CreateTaskInput,
+  UpdateTaskInput,
 } from "../types";
 
 import { filterTasks } from "../utils/TaskFilters";
-
 import { BoardHeader } from "./BoardHeader";
 import { BoardSummary } from "./BoardSummary";
 import { EmptyState } from "./EmptyState";
@@ -114,35 +115,32 @@ export function TaskBoardPage() {
     setEditingTaskId(null);
   };
 
-  const addTask = (title: string, priority: TaskPriority, dueDate?: string) => {
+  const addTask = (values: CreateTaskInput) => {
     setTasks((prevTasks) => [
       ...prevTasks,
       {
         id: Date.now(),
-        title,
+        title: values.title,
+        description: values.description,
         status: "TODO",
-        priority,
-        dueDate,
+        priority: values.priority,
+        dueDate: values.dueDate,
       },
     ]);
 
     closeModal();
   };
 
-  const editTask = (
-    id: number,
-    title: string,
-    priority: TaskPriority,
-    dueDate?: string,
-  ) => {
+  const editTask = (id: number, values: UpdateTaskInput) => {
     setTasks((prevTasks) =>
       prevTasks.map((task) =>
         task.id === id
           ? {
               ...task,
-              title,
-              priority,
-              dueDate,
+              title: values.title,
+              description: values.description,
+              priority: values.priority,
+              dueDate: values.dueDate,
             }
           : task,
       ),
@@ -181,19 +179,14 @@ export function TaskBoardPage() {
       ? undefined
       : tasks.find((task) => task.id === editingTaskId);
 
-  const handleFormSubmit = (values: {
-    title: string;
-    priority: TaskPriority;
-    dueDate?: string;
-  }) => {
+  const handleFormSubmit = (values: CreateTaskInput) => {
     if (modalMode === "create") {
-      addTask(values.title, values.priority, values.dueDate);
-
+      addTask(values);
       return;
     }
 
     if (modalMode === "edit" && editingTaskId !== null) {
-      editTask(editingTaskId, values.title, values.priority, values.dueDate);
+      editTask(editingTaskId, values);
     }
   };
 

@@ -21,16 +21,16 @@ export function TaskCard({
 
   return (
     <article className="rounded-xl border border-slate-800 bg-slate-950 p-4 transition hover:border-slate-700">
-      {/* TITLE */}
       <div className="mb-3">
-        <h3 className="truncate font-medium text-white">
-          {task.title}
-        </h3>
+        <h3 className="truncate font-medium text-white">{task.title}</h3>
+        {task.description && (
+          <p className="mb-3 line-clamp-2 text-sm text-slate-400">
+            {task.description}
+          </p>
+        )}
       </div>
 
-      {/* INFO */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        {/* PRIORITY */}
         <span
           className={`rounded-full px-2.5 py-1 text-xs font-medium ${
             priorityClass[task.priority]
@@ -39,17 +39,11 @@ export function TaskCard({
           {task.priority}
         </span>
 
-        {/* DUE DATE */}
         {task.dueDate && (
-          <span className="text-xs text-slate-500">
-            Due: {task.dueDate}
-          </span>
+          <span className="text-xs text-slate-500">Due: {task.dueDate}</span>
         )}
       </div>
-
-      {/* ACTIONS */}
       <div className="flex items-center justify-end gap-2">
-        {/* EDIT */}
         <button
           type="button"
           onClick={() => onEdit(task.id)}
@@ -58,7 +52,6 @@ export function TaskCard({
           Edit
         </button>
 
-        {/* COMPLETE */}
         {task.status !== "DONE" && (
           <button
             type="button"
@@ -68,8 +61,6 @@ export function TaskCard({
             Complete
           </button>
         )}
-
-        {/* DELETE */}
         <button
           type="button"
           onClick={() => onDelete(task.id)}
