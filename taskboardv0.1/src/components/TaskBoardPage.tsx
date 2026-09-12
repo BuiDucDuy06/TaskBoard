@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type {
   Task,
@@ -18,36 +18,7 @@ import { TaskBoard } from "./TaskBoard";
 import { TaskFilters } from "./TaskFilters";
 import { TaskForm } from "./TaskForm";
 import { TaskModal } from "./TaskModal";
-
-const initialTasks: Task[] = [
-  {
-    id: 1,
-    title: "Setup project",
-    status: "TODO",
-    priority: "HIGH",
-    dueDate: "2026-08-20",
-  },
-  {
-    id: 2,
-    title: "Build board",
-    status: "IN_PROGRESS",
-    priority: "MEDIUM",
-    dueDate: "2026-08-28",
-  },
-  {
-    id: 3,
-    title: "Read docs",
-    status: "DONE",
-    priority: "HIGH",
-    dueDate: "2026-08-18",
-  },
-  {
-    id: 4,
-    title: "Learn state",
-    status: "TODO",
-    priority: "LOW",
-  },
-];
+import { fakeGetTasks } from "../api/taskAPI";
 
 const isOverdue = (task: Task) => {
   if (!task.dueDate || task.status === "DONE") {
@@ -64,7 +35,11 @@ const isOverdue = (task: Task) => {
 };
 
 export function TaskBoardPage() {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
 
@@ -89,6 +64,27 @@ export function TaskBoardPage() {
   const overdueCount = tasks.filter(isOverdue).length;
 
   const highCount = tasks.filter((task) => task.priority === "HIGH").length;
+
+  const loadTasks = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const data = await fakeGetTasks();
+
+      setTasks(data);
+    } catch (error) {
+      console.error("Failed to load tasks:", error);
+
+      setError("Could not load tasks.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTasks();
+  }, [loadTasks]);
 
   const filteredTasks = filterTasks(tasks, {
     search,
@@ -190,10 +186,76 @@ export function TaskBoardPage() {
     }
   };
 
+if (isLoading) {
+    return (
+      <div className="p-6">
+        <h1 className="mb-6 text-2xl font-bold">
+          Project Management
+        </h1>
+
+        <div className="rounded-lg border bg-white p-8 text-center">
+          <p className="text-gray-600">
+            Loading tasks...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <h1 className="mb-6 text-2xl font-bold">
+          Project Management
+        </h1>
+
+        <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center">
+          <h2 className="mb-2 text-lg font-semibold text-red-700">
+            {error}
+          </h2>
+
+          <p className="mb-4 text-sm text-red-600">
+            Please try again.
+          </p>
+
+          <button
+            type="button"
+            onClick={loadTasks}
+            className="rounded-md bg-red-600 px-4 py-2 text-white"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (tasks.length === 0) {
+    return (
+      <div className="p-6">
+        <h1 className="mb-6 text-2xl font-bold">
+          Project Management
+        </h1>
+
+        <div className="rounded-lg border bg-white p-8 text-center">
+          <h2 className="mb-4 text-lg font-semibold">
+            No tasks yet.
+          </h2>
+
+          <button
+            type="button"
+            className="rounded-md bg-blue-600 px-4 py-2 text-white"
+          >
+            Create first task
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">
+        <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">
       <div className="mx-auto max-w-6xl">
-        {/* HEADER */}
         <header className="mb-8 flex items-center justify-between">
           <BoardHeader title="PROJECT MANAGEMENT" onNewTask={openCreateModal} />
 
@@ -204,8 +266,6 @@ export function TaskBoardPage() {
             high={highCount}
           />
         </header>
-
-        {/* FILTER */}
         <TaskFilters
           search={search}
           status={statusFilter}
@@ -219,8 +279,6 @@ export function TaskBoardPage() {
           onSortDirectionChange={setSortDirection}
           onReset={resetFilters}
         />
-
-        {/* RESULT COUNT */}
         <div className="mb-4">
           <p className="text-sm text-slate-400">
             Showing{" "}
@@ -231,8 +289,6 @@ export function TaskBoardPage() {
             tasks
           </p>
         </div>
-
-        {/* BOARD */}
         {filteredTasks.length === 0 ? (
           <EmptyState onReset={resetFilters} />
         ) : (
