@@ -1,51 +1,59 @@
 import type { Task } from "../types";
 
-type FakeApiMode = "success" | "empty" | "error";
+const projectTasks: Record<number, Task[]> = {
+  1: [
+    {
+      id: 1,
+      title: "Setup project",
+      status: "TODO",
+      priority: "HIGH",
+      dueDate: "2026-09-20",
+    },
+  ],
 
-const fakeTasks: Task[] = [
-  {
-    id: 1,
-    title: "Setup project",
-    status: "TODO",
-    priority: "HIGH",
-    dueDate: "2026-09-20",
-  },
-  {
-    id: 2,
-    title: "Build board",
-    status: "IN_PROGRESS",
-    priority: "MEDIUM",
-    dueDate: "2026-09-25",
-  },
-  {
-    id: 3,
-    title: "Read docs",
-    status: "DONE",
-    priority: "LOW",
-    dueDate: "2026-09-15",
-  },
-];
+  2: [
+    {
+      id: 2,
+      title: "Design dashboard",
+      status: "IN_PROGRESS",
+      priority: "MEDIUM",
+      dueDate: "2026-09-22",
+    },
+  ],
+
+  3: [
+    {
+      id: 3,
+      title: "Fix login bug",
+      status: "DONE",
+      priority: "HIGH",
+      dueDate: "2026-09-21",
+    },
+  ],
+};
 
 export function fakeGetTasks(
-  mode: FakeApiMode = "success"
+  projectId: number,
+  signal?: AbortSignal
 ): Promise<Task[]> {
   return new Promise((resolve, reject) => {
-    const delay = 1000;
-
-    setTimeout(() => {
-      if (mode === "success") {
-        resolve(fakeTasks);
+    const timer = setTimeout(() => {
+      if (signal?.aborted) {
         return;
       }
 
-      if (mode === "empty") {
-        resolve([]);
-        return;
-      }
-
-      if (mode === "error") {
+      // Demo error cho project 2
+      if (projectId === 2) {
         reject(new Error("Could not load tasks."));
+        return;
       }
-    }, delay);
+
+      resolve(projectTasks[projectId] ?? []);
+    }, 1000);
+
+    signal?.addEventListener("abort", () => {
+      clearTimeout(timer);
+      reject(new DOMException("Request cancelled", "AbortError"));
+    });
   });
 }

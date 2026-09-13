@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import type {
   Task,
@@ -37,8 +37,18 @@ const isOverdue = (task: Task) => {
 export function TaskBoardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
 
+  const [projectId, setProjectId] = useState(1);
+
+  const projects = [
+    { id: 1, name: "Website Revamp" },
+    { id: 2, name: "Admin Dashboard" },
+    { id: 3, name: "Mobile App" },
+  ];
+
+  const [retryCount, setRetryCount] = useState(0);
+
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
@@ -65,26 +75,42 @@ export function TaskBoardPage() {
 
   const highCount = tasks.filter((task) => task.priority === "HIGH").length;
 
-  const loadTasks = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const data = await fakeGetTasks();
-
-      setTasks(data);
-    } catch (error) {
-      console.error("Failed to load tasks:", error);
-
-      setError("Could not load tasks.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
+    let cancelled = false;
+
+    const loadTasks = async () => {
+      setIsLoading(true);
+      setError(null);
+      setTasks([]);
+
+      try {
+        const data = await fakeGetTasks(projectId);
+
+        if (cancelled) {
+          return;
+        }
+
+        setTasks(data);
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        console.error("Failed to load tasks:", error);
+        setError("Could not load tasks.");
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
     loadTasks();
-  }, [loadTasks]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, retryCount]);
 
   const filteredTasks = filterTasks(tasks, {
     search,
@@ -186,17 +212,68 @@ export function TaskBoardPage() {
     }
   };
 
-if (isLoading) {
-    return (
-      <div className="p-6">
-        <h1 className="mb-6 text-2xl font-bold">
-          Project Management
-        </h1>
+  const projectSwitcher = (
+    <div className="mb-6 flex items-center gap-3">
+      <label
+        htmlFor="project"
+        className="font-medium"
+      >
+        Project:
+      </label>
 
-        <div className="rounded-lg border bg-white p-8 text-center">
-          <p className="text-gray-600">
-            Loading tasks...
-          </p>
+      <select
+        id="project"
+        value={projectId}
+        onChange={(event) => {
+          setProjectId(
+            Number(event.target.value),
+          );
+        }}
+        className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+      >
+        {projects.map((project) => (
+          <option
+            key={project.id}
+            value={project.id}
+          >
+            {project.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 px-6 py-10 text-white">
+        <div className="mx-auto max-w-6xl">
+          {projectSwitcher}
+
+          <h1 className="mb-6 text-2xl font-bold">
+            Project Management
+          </h1>
+
+          <div className="rounded-lg border border-red-800 bg-red-950/40 p-8 text-center">
+            <h2 className="mb-2 text-lg font-semibold text-red-400">
+              {error}
+            </h2>
+
+            <p className="mb-4 text-sm text-red-300">
+              Please try again.
+            </p>
+
+            <button
+              type="button"
+              onClick={() =>
+                setRetryCount(
+                  (count) => count + 1,
+                )
+              }
+              className="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-500"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -204,27 +281,35 @@ if (isLoading) {
 
   if (error) {
     return (
-      <div className="p-6">
-        <h1 className="mb-6 text-2xl font-bold">
-          Project Management
-        </h1>
+      <div className="min-h-screen bg-slate-950 px-6 py-10 text-white">
+        <div className="mx-auto max-w-6xl">
+          {projectSwitcher}
 
-        <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center">
-          <h2 className="mb-2 text-lg font-semibold text-red-700">
-            {error}
-          </h2>
+          <h1 className="mb-6 text-2xl font-bold">
+            Project Management
+          </h1>
 
-          <p className="mb-4 text-sm text-red-600">
-            Please try again.
-          </p>
+          <div className="rounded-lg border border-red-800 bg-red-950/40 p-8 text-center">
+            <h2 className="mb-2 text-lg font-semibold text-red-400">
+              {error}
+            </h2>
 
-          <button
-            type="button"
-            onClick={loadTasks}
-            className="rounded-md bg-red-600 px-4 py-2 text-white"
-          >
-            Retry
-          </button>
+            <p className="mb-4 text-sm text-red-300">
+              Please try again.
+            </p>
+
+            <button
+              type="button"
+              onClick={() =>
+                setRetryCount(
+                  (count) => count + 1,
+                )
+              }
+              className="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-500"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -232,30 +317,66 @@ if (isLoading) {
 
   if (tasks.length === 0) {
     return (
-      <div className="p-6">
-        <h1 className="mb-6 text-2xl font-bold">
-          Project Management
-        </h1>
+      <div className="min-h-screen bg-slate-950 px-6 py-10 text-white">
+        <div className="mx-auto max-w-6xl">
+          {projectSwitcher}
 
-        <div className="rounded-lg border bg-white p-8 text-center">
-          <h2 className="mb-4 text-lg font-semibold">
-            No tasks yet.
-          </h2>
+          <h1 className="mb-6 text-2xl font-bold">
+            Project Management
+          </h1>
 
-          <button
-            type="button"
-            className="rounded-md bg-blue-600 px-4 py-2 text-white"
-          >
-            Create first task
-          </button>
+          <div className="rounded-lg border border-slate-700 bg-slate-900 p-8 text-center">
+            <h2 className="mb-4 text-lg font-semibold">
+              No tasks yet.
+            </h2>
+
+            <button
+              type="button"
+              onClick={openCreateModal}
+              className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-500"
+            >
+              Create first task
+            </button>
+          </div>
         </div>
+
+        <TaskModal
+          open={isModalOpen}
+          title={
+            modalMode === "create"
+              ? "Create task"
+              : "Edit task"
+          }
+          onClose={closeModal}
+        >
+          <TaskForm
+            mode={modalMode}
+            initialValues={
+              modalMode === "edit" &&
+              editingTask
+                ? {
+                    title: editingTask.title,
+                    description:
+                      editingTask.description,
+                    priority:
+                      editingTask.priority,
+                    dueDate:
+                      editingTask.dueDate,
+                  }
+                : undefined
+            }
+            onSubmit={handleFormSubmit}
+            onCancel={closeModal}
+          />
+        </TaskModal>
       </div>
     );
   }
 
   return (
-        <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">
       <div className="mx-auto max-w-6xl">
+        {projectSwitcher}
         <header className="mb-8 flex items-center justify-between">
           <BoardHeader title="PROJECT MANAGEMENT" onNewTask={openCreateModal} />
 
