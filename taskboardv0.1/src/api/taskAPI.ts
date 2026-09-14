@@ -41,8 +41,6 @@ export function fakeGetTasks(
       if (signal?.aborted) {
         return;
       }
-
-      // Demo error cho project 2
       if (projectId === 2) {
         reject(new Error("Could not load tasks."));
         return;
@@ -55,5 +53,27 @@ export function fakeGetTasks(
       clearTimeout(timer);
       reject(new DOMException("Request cancelled", "AbortError"));
     });
+  });
+}
+
+export function fakeSearchTasks(
+  tasks: Task[],
+  query: string
+): Promise<Task[]> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const normalizedQuery = query.trim().toLowerCase();
+
+      if (!normalizedQuery) {
+        resolve(tasks);
+        return;
+      }
+
+      const result = tasks.filter((task) =>
+        task.title.toLowerCase().includes(normalizedQuery)
+      );
+
+      resolve(result);
+    }, 500);
   });
 }

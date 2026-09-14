@@ -16,6 +16,8 @@ type TaskFiltersProps = {
 
   sortDirection: SortDirection;
 
+  isSearching: boolean;
+
   onSearchChange: (value: string) => void;
 
   onStatusChange: (
@@ -43,6 +45,7 @@ export function TaskFilters({
   priority,
   sortBy,
   sortDirection,
+  isSearching,
   onSearchChange,
   onStatusChange,
   onPriorityChange,
@@ -63,7 +66,6 @@ export function TaskFilters({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        {/* SEARCH */}
         <div className="lg:col-span-2">
           <label className="mb-2 block text-xs font-medium text-slate-400">
             Search
@@ -78,9 +80,9 @@ export function TaskFilters({
             placeholder="Search task title..."
             className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
           />
+          {isSearching && <span>Searching...</span>}
         </div>
 
-        {/* STATUS */}
         <div>
           <label className="mb-2 block text-xs font-medium text-slate-400">
             Status
@@ -115,7 +117,6 @@ export function TaskFilters({
           </select>
         </div>
 
-        {/* PRIORITY */}
         <div>
           <label className="mb-2 block text-xs font-medium text-slate-400">
             Priority
@@ -150,7 +151,6 @@ export function TaskFilters({
           </select>
         </div>
 
-        {/* SORT */}
         <div>
           <label className="mb-2 block text-xs font-medium text-slate-400">
             Sort by
@@ -180,7 +180,6 @@ export function TaskFilters({
         </div>
       </div>
 
-      {/* DIRECTION + RESET */}
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="w-full sm:w-48">
           <label className="mb-2 block text-xs font-medium text-slate-400">

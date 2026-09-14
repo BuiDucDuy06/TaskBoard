@@ -18,7 +18,8 @@ import { TaskBoard } from "./TaskBoard";
 import { TaskFilters } from "./TaskFilters";
 import { TaskForm } from "./TaskForm";
 import { TaskModal } from "./TaskModal";
-import { fakeGetTasks } from "../api/taskAPI";
+import { fakeGetTasks, fakeSearchTasks } from "../api/taskAPI";
+import useDebounce from "../hooks/useDebounce";
 
 const isOverdue = (task: Task) => {
   if (!task.dueDate || task.status === "DONE") {
@@ -52,6 +53,12 @@ export function TaskBoardPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
+
+  const [searchResults, setSearchResults] = useState<Task[]>([]);
+
+  const [isSearching, setIsSearching] = useState(false);
+
+  const debouncedSearch = useDebounce(search, 300);
 
   const [statusFilter, setStatusFilter] = useState<"ALL" | TaskStatus>("ALL");
 
@@ -111,6 +118,33 @@ export function TaskBoardPage() {
       cancelled = true;
     };
   }, [projectId, retryCount]);
+
+  useEffect(() => {
+  let cancelled = false;
+
+  async function searchTasks() {
+    if (!debouncedSearch.trim()) {
+      setSearchResults(tasks);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+
+    const result = await fakeSearchTasks(tasks, debouncedSearch);
+
+    if (!cancelled) {
+      setSearchResults(result);
+      setIsSearching(false);
+    }
+  }
+
+  searchTasks();
+
+  return () => {
+    cancelled = true;
+  };
+}, [debouncedSearch, tasks]);
 
   const filteredTasks = filterTasks(tasks, {
     search,
@@ -393,6 +427,7 @@ export function TaskBoardPage() {
           priority={priorityFilter}
           sortBy={sortBy}
           sortDirection={sortDirection}
+          isSearching={isSearching}
           onSearchChange={setSearch}
           onStatusChange={setStatusFilter}
           onPriorityChange={setPriorityFilter}
@@ -414,7 +449,7 @@ export function TaskBoardPage() {
           <EmptyState onReset={resetFilters} />
         ) : (
           <TaskBoard
-            tasks={filteredTasks}
+            tasks={searchResults}
             onComplete={completeTask}
             onDelete={deleteTask}
             onEdit={openEditModal}
