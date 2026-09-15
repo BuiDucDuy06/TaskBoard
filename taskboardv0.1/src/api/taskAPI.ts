@@ -57,9 +57,7 @@ export function fakeGetTasks(
 }
 
 export function fakeSearchTasks(
-  tasks: Task[],
-  query: string
-): Promise<Task[]> {
+tasks: Task[], query: string, signal: AbortSignal): Promise<Task[]> {
   return new Promise((resolve) => {
     setTimeout(() => {
       const normalizedQuery = query.trim().toLowerCase();

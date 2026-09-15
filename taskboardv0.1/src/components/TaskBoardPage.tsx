@@ -54,7 +54,7 @@ export function TaskBoardPage() {
 
   const [search, setSearch] = useState("");
 
-  const [searchResults, setSearchResults] = useState<Task[]>([]);
+  const [searchedTasks, setSearchedTasks] = useState<Task[]>([]);
 
   const [isSearching, setIsSearching] = useState(false);
 
@@ -120,34 +120,51 @@ export function TaskBoardPage() {
   }, [projectId, retryCount]);
 
   useEffect(() => {
-  let cancelled = false;
+    const controller = new AbortController();
 
-  async function searchTasks() {
-    if (!debouncedSearch.trim()) {
-      setSearchResults(tasks);
-      setIsSearching(false);
-      return;
-    }
+    const searchTasks = async () => {
+      if (!debouncedSearch.trim()) {
+        setSearchedTasks(tasks);
+        setIsSearching(false);
+        return;
+      }
 
-    setIsSearching(true);
+      setIsSearching(true);
 
-    const result = await fakeSearchTasks(tasks, debouncedSearch);
+      try {
+        const result = await fakeSearchTasks(
+          tasks,
+          debouncedSearch,
+          controller.signal,
+        );
 
-    if (!cancelled) {
-      setSearchResults(result);
-      setIsSearching(false);
-    }
-  }
+        if (controller.signal.aborted) {
+          return;
+        }
 
-  searchTasks();
+        setSearchedTasks(result);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
 
-  return () => {
-    cancelled = true;
-  };
-}, [debouncedSearch, tasks]);
+        setError("Could not search tasks. Please try again.");
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsSearching(false);
+        }
+      }
+    };
 
-  const filteredTasks = filterTasks(tasks, {
-    search,
+    searchTasks();
+
+    return () => {
+      controller.abort();
+    };
+  }, [debouncedSearch, tasks]);
+
+  const filteredTasks = filterTasks(searchedTasks, {
+    search: "",
     status: statusFilter,
     priority: priorityFilter,
     sortBy,
@@ -248,10 +265,7 @@ export function TaskBoardPage() {
 
   const projectSwitcher = (
     <div className="mb-6 flex items-center gap-3">
-      <label
-        htmlFor="project"
-        className="font-medium"
-      >
+      <label htmlFor="project" className="font-medium">
         Project:
       </label>
 
@@ -259,17 +273,12 @@ export function TaskBoardPage() {
         id="project"
         value={projectId}
         onChange={(event) => {
-          setProjectId(
-            Number(event.target.value),
-          );
+          setProjectId(Number(event.target.value));
         }}
         className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-white"
       >
         {projects.map((project) => (
-          <option
-            key={project.id}
-            value={project.id}
-          >
+          <option key={project.id} value={project.id}>
             {project.name}
           </option>
         ))}
@@ -283,30 +292,10 @@ export function TaskBoardPage() {
         <div className="mx-auto max-w-6xl">
           {projectSwitcher}
 
-          <h1 className="mb-6 text-2xl font-bold">
-            Project Management
-          </h1>
+          <h1 className="mb-6 text-2xl font-bold">Project Management</h1>
 
-          <div className="rounded-lg border border-red-800 bg-red-950/40 p-8 text-center">
-            <h2 className="mb-2 text-lg font-semibold text-red-400">
-              {error}
-            </h2>
-
-            <p className="mb-4 text-sm text-red-300">
-              Please try again.
-            </p>
-
-            <button
-              type="button"
-              onClick={() =>
-                setRetryCount(
-                  (count) => count + 1,
-                )
-              }
-              className="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-500"
-            >
-              Retry
-            </button>
+          <div className="rounded-lg border border-slate-700 bg-slate-900 p-8 text-center">
+            <p className="text-slate-300">Loading tasks...</p>
           </div>
         </div>
       </div>
@@ -319,26 +308,16 @@ export function TaskBoardPage() {
         <div className="mx-auto max-w-6xl">
           {projectSwitcher}
 
-          <h1 className="mb-6 text-2xl font-bold">
-            Project Management
-          </h1>
+          <h1 className="mb-6 text-2xl font-bold">Project Management</h1>
 
           <div className="rounded-lg border border-red-800 bg-red-950/40 p-8 text-center">
-            <h2 className="mb-2 text-lg font-semibold text-red-400">
-              {error}
-            </h2>
+            <h2 className="mb-2 text-lg font-semibold text-red-400">{error}</h2>
 
-            <p className="mb-4 text-sm text-red-300">
-              Please try again.
-            </p>
+            <p className="mb-4 text-sm text-red-300">Please try again.</p>
 
             <button
               type="button"
-              onClick={() =>
-                setRetryCount(
-                  (count) => count + 1,
-                )
-              }
+              onClick={() => setRetryCount((count) => count + 1)}
               className="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-500"
             >
               Retry
@@ -355,14 +334,10 @@ export function TaskBoardPage() {
         <div className="mx-auto max-w-6xl">
           {projectSwitcher}
 
-          <h1 className="mb-6 text-2xl font-bold">
-            Project Management
-          </h1>
+          <h1 className="mb-6 text-2xl font-bold">Project Management</h1>
 
           <div className="rounded-lg border border-slate-700 bg-slate-900 p-8 text-center">
-            <h2 className="mb-4 text-lg font-semibold">
-              No tasks yet.
-            </h2>
+            <h2 className="mb-4 text-lg font-semibold">No tasks yet.</h2>
 
             <button
               type="button"
@@ -376,26 +351,18 @@ export function TaskBoardPage() {
 
         <TaskModal
           open={isModalOpen}
-          title={
-            modalMode === "create"
-              ? "Create task"
-              : "Edit task"
-          }
+          title={modalMode === "create" ? "Create task" : "Edit task"}
           onClose={closeModal}
         >
           <TaskForm
             mode={modalMode}
             initialValues={
-              modalMode === "edit" &&
-              editingTask
+              modalMode === "edit" && editingTask
                 ? {
                     title: editingTask.title,
-                    description:
-                      editingTask.description,
-                    priority:
-                      editingTask.priority,
-                    dueDate:
-                      editingTask.dueDate,
+                    description: editingTask.description,
+                    priority: editingTask.priority,
+                    dueDate: editingTask.dueDate,
                   }
                 : undefined
             }
@@ -449,7 +416,7 @@ export function TaskBoardPage() {
           <EmptyState onReset={resetFilters} />
         ) : (
           <TaskBoard
-            tasks={searchResults}
+            tasks={filteredTasks}
             onComplete={completeTask}
             onDelete={deleteTask}
             onEdit={openEditModal}
