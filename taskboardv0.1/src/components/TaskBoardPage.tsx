@@ -20,6 +20,8 @@ import { TaskForm } from "./TaskForm";
 import { TaskModal } from "./TaskModal";
 import { fakeGetTasks, fakeSearchTasks } from "../api/taskAPI";
 import useDebounce from "../hooks/useDebounce";
+import { useParams } from "react-router-dom";
+import { projects } from "../data/projects";
 
 const isOverdue = (task: Task) => {
   if (!task.dueDate || task.status === "DONE") {
@@ -38,13 +40,13 @@ const isOverdue = (task: Task) => {
 export function TaskBoardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
 
-  const [projectId, setProjectId] = useState(1);
+  const { projectId } = useParams<{ projectId: string }>();
 
-  const projects = [
-    { id: 1, name: "Website Revamp" },
-    { id: 2, name: "Admin Dashboard" },
-    { id: 3, name: "Mobile App" },
-  ];
+  const currentProjectId = Number(projectId);
+
+  const currentProject = projects.find(
+  (project) => project.id === currentProjectId,
+  );
 
   const [retryCount, setRetryCount] = useState(0);
 
@@ -91,7 +93,7 @@ export function TaskBoardPage() {
       setTasks([]);
 
       try {
-        const data = await fakeGetTasks(projectId);
+        const data = await fakeGetTasks(currentProjectId);
 
         if (cancelled) {
           return;
@@ -117,7 +119,7 @@ export function TaskBoardPage() {
     return () => {
       cancelled = true;
     };
-  }, [projectId, retryCount]);
+  }, [currentProjectId, retryCount]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -263,34 +265,12 @@ export function TaskBoardPage() {
     }
   };
 
-  const projectSwitcher = (
-    <div className="mb-6 flex items-center gap-3">
-      <label htmlFor="project" className="font-medium">
-        Project:
-      </label>
 
-      <select
-        id="project"
-        value={projectId}
-        onChange={(event) => {
-          setProjectId(Number(event.target.value));
-        }}
-        className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-white"
-      >
-        {projects.map((project) => (
-          <option key={project.id} value={project.id}>
-            {project.name}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 px-6 py-10 text-white">
         <div className="mx-auto max-w-6xl">
-          {projectSwitcher}
 
           <h1 className="mb-6 text-2xl font-bold">Project Management</h1>
 
@@ -306,7 +286,6 @@ export function TaskBoardPage() {
     return (
       <div className="min-h-screen bg-slate-950 px-6 py-10 text-white">
         <div className="mx-auto max-w-6xl">
-          {projectSwitcher}
 
           <h1 className="mb-6 text-2xl font-bold">Project Management</h1>
 
@@ -332,7 +311,6 @@ export function TaskBoardPage() {
     return (
       <div className="min-h-screen bg-slate-950 px-6 py-10 text-white">
         <div className="mx-auto max-w-6xl">
-          {projectSwitcher}
 
           <h1 className="mb-6 text-2xl font-bold">Project Management</h1>
 
@@ -377,9 +355,8 @@ export function TaskBoardPage() {
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">
       <div className="mx-auto max-w-6xl">
-        {projectSwitcher}
         <header className="mb-8 flex items-center justify-between">
-          <BoardHeader title="PROJECT MANAGEMENT" onNewTask={openCreateModal} />
+          <BoardHeader title={currentProject?.name ?? "Project"} onNewTask={openCreateModal} />
 
           <BoardSummary
             total={tasks.length}
