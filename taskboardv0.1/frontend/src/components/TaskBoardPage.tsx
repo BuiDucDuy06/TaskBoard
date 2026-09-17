@@ -18,7 +18,7 @@ import { TaskBoard } from "./TaskBoard";
 import { TaskFilters } from "./TaskFilters";
 import { TaskForm } from "./TaskForm";
 import { TaskModal } from "./TaskModal";
-import { fakeGetTasks, fakeSearchTasks } from "../api/taskAPI";
+import { getTasks } from "../api/taskAPI";
 import useDebounce from "../hooks/useDebounce";
 import { useParams } from "react-router-dom";
 import { projects } from "../data/projects";
@@ -45,12 +45,12 @@ export function TaskBoardPage() {
   const currentProjectId = Number(projectId);
 
   const currentProject = projects.find(
-  (project) => project.id === currentProjectId,
+    (project) => project.id === currentProjectId,
   );
 
   const [retryCount, setRetryCount] = useState(0);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -88,28 +88,22 @@ export function TaskBoardPage() {
     let cancelled = false;
 
     const loadTasks = async () => {
-      setIsLoading(true);
-      setError(null);
-      setTasks([]);
-
       try {
-        const data = await fakeGetTasks(currentProjectId);
+        setLoading(true);
+        setError(null);
 
-        if (cancelled) {
-          return;
-        }
+        const data = await getTasks();
+
+        if (cancelled) return;
 
         setTasks(data);
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
+      } catch {
+        if (cancelled) return;
 
-        console.error("Failed to load tasks:", error);
-        setError("Could not load tasks.");
+        setError("Cannot connect to server");
       } finally {
         if (!cancelled) {
-          setIsLoading(false);
+          setLoading(false);
         }
       }
     };
@@ -119,7 +113,7 @@ export function TaskBoardPage() {
     return () => {
       cancelled = true;
     };
-  }, [currentProjectId, retryCount]);
+  }, [retryCount]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -164,6 +158,25 @@ export function TaskBoardPage() {
       controller.abort();
     };
   }, [debouncedSearch, tasks]);
+
+  const fakeSearchTasks = async (
+    tasks: Task[],
+    query: string,
+    signal: AbortSignal,
+  ) => {
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(resolve, 300);
+
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(new DOMException("Aborted", "AbortError"));
+      });
+    });
+
+    return tasks.filter((task) =>
+      task.title.toLowerCase().includes(query.toLowerCase()),
+    );
+  };
 
   const filteredTasks = filterTasks(searchedTasks, {
     search: "",
@@ -265,13 +278,10 @@ export function TaskBoardPage() {
     }
   };
 
-
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 px-6 py-10 text-white">
         <div className="mx-auto max-w-6xl">
-
           <h1 className="mb-6 text-2xl font-bold">Project Management</h1>
 
           <div className="rounded-lg border border-slate-700 bg-slate-900 p-8 text-center">
@@ -286,7 +296,6 @@ export function TaskBoardPage() {
     return (
       <div className="min-h-screen bg-slate-950 px-6 py-10 text-white">
         <div className="mx-auto max-w-6xl">
-
           <h1 className="mb-6 text-2xl font-bold">Project Management</h1>
 
           <div className="rounded-lg border border-red-800 bg-red-950/40 p-8 text-center">
@@ -311,7 +320,6 @@ export function TaskBoardPage() {
     return (
       <div className="min-h-screen bg-slate-950 px-6 py-10 text-white">
         <div className="mx-auto max-w-6xl">
-
           <h1 className="mb-6 text-2xl font-bold">Project Management</h1>
 
           <div className="rounded-lg border border-slate-700 bg-slate-900 p-8 text-center">
@@ -356,7 +364,10 @@ export function TaskBoardPage() {
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">
       <div className="mx-auto max-w-6xl">
         <header className="mb-8 flex items-center justify-between">
-          <BoardHeader title={currentProject?.name ?? "Project"} onNewTask={openCreateModal} />
+          <BoardHeader
+            title={currentProject?.name ?? "Project"}
+            onNewTask={openCreateModal}
+          />
 
           <BoardSummary
             total={tasks.length}
