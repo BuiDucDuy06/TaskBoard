@@ -18,7 +18,12 @@ import { TaskBoard } from "./TaskBoard";
 import { TaskFilters } from "./TaskFilters";
 import { TaskForm } from "./TaskForm";
 import { TaskModal } from "./TaskModal";
-import { getTasks } from "../api/taskAPI";
+import {
+  getTasks,
+  updateTask,
+  createTask,
+  deleteTask as deleteTaskApi,
+} from "../api/taskAPI";
 import useDebounce from "../hooks/useDebounce";
 import { useParams } from "react-router-dom";
 import { projects } from "../data/projects";
@@ -74,6 +79,12 @@ export function TaskBoardPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [modalError, setModalError] = useState<string | null>(null);
+
+  const [actionError, setActionError] = useState<string | null>(null);
+
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
 
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
@@ -114,6 +125,12 @@ export function TaskBoardPage() {
       cancelled = true;
     };
   }, [retryCount]);
+
+  const refreshTasks = async () => {
+    const data = await getTasks();
+
+    setTasks(data);
+  };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -189,69 +206,68 @@ export function TaskBoardPage() {
   const openCreateModal = () => {
     setModalMode("create");
     setEditingTaskId(null);
+    setModalError(null);
     setIsModalOpen(true);
   };
 
   const openEditModal = (id: number) => {
     setModalMode("edit");
     setEditingTaskId(id);
+    setModalError(null);
     setIsModalOpen(true);
   };
 
   const closeModal = () => {
+    if (isSubmitting) {
+      return;
+    }
+
     setIsModalOpen(false);
     setEditingTaskId(null);
+    setModalError(null);
   };
 
-  const addTask = (values: CreateTaskInput) => {
-    setTasks((prevTasks) => [
-      ...prevTasks,
-      {
-        id: Date.now(),
-        title: values.title,
-        description: values.description,
-        status: "TODO",
-        priority: values.priority,
-        dueDate: values.dueDate,
-      },
-    ]);
+  const editTask = async (id: number, values: UpdateTaskInput) => {
+    try {
+      setIsSubmitting(true);
+      setModalError(null);
 
-    closeModal();
+      await updateTask(id, values);
+      await refreshTasks();
+
+      setIsModalOpen(false);
+      setEditingTaskId(null);
+      setModalError(null);
+    } catch {
+      setModalError("Could not update task. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const editTask = (id: number, values: UpdateTaskInput) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === id
-          ? {
-              ...task,
-              title: values.title,
-              description: values.description,
-              priority: values.priority,
-              dueDate: values.dueDate,
-            }
-          : task,
-      ),
-    );
+  const completeTask = async (id: number) => {
+    try {
+      setActionError(null);
 
-    closeModal();
+      await updateTask(id, {
+        status: "DONE",
+      });
+
+      await refreshTasks();
+    } catch {
+      setActionError("Could not complete task. Please try again.");
+    }
   };
 
-  const completeTask = (id: number) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === id
-          ? {
-              ...task,
-              status: "DONE",
-            }
-          : task,
-      ),
-    );
-  };
+  const deleteTask = async (id: number) => {
+    try {
+      setActionError(null);
 
-  const deleteTask = (id: number) => {
-    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
+      await deleteTaskApi(id);
+      await refreshTasks();
+    } catch {
+      setActionError("Could not delete task. Please try again.");
+    }
   };
 
   const resetFilters = () => {
@@ -267,14 +283,32 @@ export function TaskBoardPage() {
       ? undefined
       : tasks.find((task) => task.id === editingTaskId);
 
-  const handleFormSubmit = (values: CreateTaskInput) => {
+  const handleFormSubmit = async (values: CreateTaskInput) => {
     if (modalMode === "create") {
-      addTask(values);
+      await handleCreateTask(values);
       return;
     }
 
     if (modalMode === "edit" && editingTaskId !== null) {
-      editTask(editingTaskId, values);
+      await editTask(editingTaskId, values);
+    }
+  };
+
+  const handleCreateTask = async (values: CreateTaskInput) => {
+    try {
+      setIsSubmitting(true);
+      setModalError(null);
+
+      await createTask(values);
+      await refreshTasks();
+
+      setIsModalOpen(false);
+      setEditingTaskId(null);
+      setModalError(null);
+    } catch {
+      setModalError("Could not create task. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -340,6 +374,11 @@ export function TaskBoardPage() {
           title={modalMode === "create" ? "Create task" : "Edit task"}
           onClose={closeModal}
         >
+          {modalError && (
+            <div className="mb-4 rounded-lg border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-300">
+              {modalError}
+            </div>
+          )}
           <TaskForm
             mode={modalMode}
             initialValues={
@@ -354,6 +393,7 @@ export function TaskBoardPage() {
             }
             onSubmit={handleFormSubmit}
             onCancel={closeModal}
+            isSubmitting={isSubmitting}
           />
         </TaskModal>
       </div>
@@ -376,6 +416,11 @@ export function TaskBoardPage() {
             high={highCount}
           />
         </header>
+        {actionError && (
+          <div className="mb-4 rounded-lg border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-300">
+            {actionError}
+          </div>
+        )}
         <TaskFilters
           search={search}
           status={statusFilter}
@@ -417,12 +462,18 @@ export function TaskBoardPage() {
         title={modalMode === "create" ? "Create task" : "Edit task"}
         onClose={closeModal}
       >
+        {modalError && (
+          <div className="mb-4 rounded-lg border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-300">
+            {modalError}
+          </div>
+        )}
         <TaskForm
           mode={modalMode}
           initialValues={
             modalMode === "edit" && editingTask
               ? {
                   title: editingTask.title,
+                  description: editingTask.description,
                   priority: editingTask.priority,
                   dueDate: editingTask.dueDate,
                 }
@@ -430,6 +481,7 @@ export function TaskBoardPage() {
           }
           onSubmit={handleFormSubmit}
           onCancel={closeModal}
+          isSubmitting={isSubmitting}
         />
       </TaskModal>
     </main>

@@ -23,8 +23,9 @@ export type CreateTaskInput = {
 };
 
 export type UpdateTaskInput = {
-  title: string;
+  title?: string;
   description?: string;
-  priority: TaskPriority;
+  status?: TaskStatus;
+  priority?: TaskPriority;
   dueDate?: string;
 };
