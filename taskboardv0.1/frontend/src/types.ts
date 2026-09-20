@@ -18,6 +18,7 @@ export type Task = {
 export type CreateTaskInput = {
   title: string;
   description?: string;
+  status: TaskStatus;
   priority: TaskPriority;
   dueDate?: string;
 };

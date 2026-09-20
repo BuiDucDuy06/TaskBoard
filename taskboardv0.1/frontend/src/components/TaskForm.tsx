@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
 import type { CreateTaskInput, TaskPriority } from "../types";
-import { validateTaskInput, type TaskFormErrors} from "../utils/taskValidation";
+import {
+  validateTaskInput,
+  type TaskFormErrors,
+} from "../utils/taskValidation";
 
 type TaskFormValues = CreateTaskInput;
 
 type TaskFormProps = {
   mode: "create" | "edit";
-
   initialValues?: TaskFormValues;
-
   onSubmit: (values: TaskFormValues) => void;
-
   onCancel: () => void;
-
   isSubmitting?: boolean;
+  serverErrors?: TaskFormErrors;
 };
 
 const defaultValues: TaskFormValues = {
@@ -21,6 +21,7 @@ const defaultValues: TaskFormValues = {
   description: "",
   priority: "MEDIUM",
   dueDate: "",
+  status: "TODO"
 };
 
 export function TaskForm({
@@ -29,10 +30,18 @@ export function TaskForm({
   onSubmit,
   onCancel,
   isSubmitting = false,
+  serverErrors = {},
 }: TaskFormProps) {
   const [formValues, setFormValues] = useState<TaskFormValues>(defaultValues);
 
   const [errors, setErrors] = useState<TaskFormErrors>({});
+
+  const displayErrors: TaskFormErrors = {
+    title: errors.title || serverErrors.title,
+    description: errors.description || serverErrors.description,
+    priority: errors.priority || serverErrors.priority,
+    dueDate: errors.dueDate || serverErrors.dueDate,
+  };
 
   useEffect(() => {
     setFormValues(initialValues ?? defaultValues);
@@ -71,6 +80,7 @@ export function TaskForm({
       description: formValues.description?.trim() || undefined,
       priority: formValues.priority,
       dueDate: formValues.dueDate || undefined,
+      status: formValues.status,
     });
   };
 
@@ -95,14 +105,14 @@ export function TaskForm({
           disabled={isSubmitting}
           maxLength={100}
           className={`w-full rounded-xl border bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 disabled:opacity-50 ${
-            errors.title
+            displayErrors.title
               ? "border-red-500 focus:ring-2 focus:ring-red-500/20"
               : "border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
           }`}
         />
 
-        {errors.title && (
-          <p className="mt-2 text-sm text-red-400">{errors.title}</p>
+        {displayErrors.title && (
+          <p className="mt-2 text-sm text-red-400">{displayErrors.title}</p>
         )}
       </div>
 
@@ -123,15 +133,15 @@ export function TaskForm({
           maxLength={500}
           rows={4}
           className={`w-full resize-none rounded-xl border bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 disabled:opacity-50 ${
-            errors.description
+            displayErrors.description
               ? "border-red-500 focus:ring-2 focus:ring-red-500/20"
               : "border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
           }`}
         />
 
         <div className="mt-1 flex justify-between">
-          {errors.description ? (
-            <p className="text-sm text-red-400">{errors.description}</p>
+          {displayErrors.description ? (
+            <p className="text-sm text-red-400">{displayErrors.description}</p>
           ) : (
             <span />
           )}
@@ -158,7 +168,7 @@ export function TaskForm({
           }
           disabled={isSubmitting}
           className={`w-full rounded-xl border bg-slate-950 px-4 py-3 text-sm text-white outline-none disabled:opacity-50 ${
-            errors.priority
+            displayErrors.priority
               ? "border-red-500"
               : "border-slate-700 focus:border-indigo-500"
           }`}
@@ -170,8 +180,8 @@ export function TaskForm({
           <option value="HIGH">HIGH</option>
         </select>
 
-        {errors.priority && (
-          <p className="mt-2 text-sm text-red-400">{errors.priority}</p>
+        {displayErrors.priority && (
+          <p className="mt-2 text-sm text-red-400">{displayErrors.priority}</p>
         )}
       </div>
       <div>
@@ -189,14 +199,14 @@ export function TaskForm({
           onChange={(event) => updateField("dueDate", event.target.value)}
           disabled={isSubmitting}
           className={`w-full rounded-xl border bg-slate-950 px-4 py-3 text-sm text-white outline-none disabled:opacity-50 ${
-            errors.dueDate
+            displayErrors.dueDate
               ? "border-red-500"
               : "border-slate-700 focus:border-indigo-500"
           }`}
         />
 
-        {errors.dueDate && (
-          <p className="mt-2 text-sm text-red-400">{errors.dueDate}</p>
+        {displayErrors.dueDate && (
+          <p className="mt-2 text-sm text-red-400">{displayErrors.dueDate}</p>
         )}
       </div>
       <div className="flex justify-end gap-3 pt-2">

@@ -7,7 +7,7 @@ import {
   MaxLength,
 } from 'class-validator';
 
-import type { TaskPriority } from '../task.type.js';
+import type { TaskPriority, TaskStatus } from '../task.type.js';
 
 export class CreateTaskDto {
   @IsString()
@@ -19,6 +19,9 @@ export class CreateTaskDto {
   @IsOptional()
   @MaxLength(500)
   description?: string;
+
+  @IsIn(['TODO', 'IN_PROGRESS', 'DONE'])
+  status: TaskStatus;
 
   @IsIn(['LOW', 'MEDIUM', 'HIGH'])
   priority: TaskPriority;

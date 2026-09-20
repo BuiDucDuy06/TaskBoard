@@ -1,6 +1,7 @@
 import {
   IsDateString,
   IsIn,
+  IsNotEmpty,
   IsOptional,
   IsString,
   MaxLength,
@@ -10,8 +11,9 @@ import type { TaskPriority, TaskStatus } from '../task.type.js';
 
 export class UpdateTaskDto {
   @IsString()
-  @IsOptional()
+  @IsNotEmpty()
   @MaxLength(100)
+  @IsOptional()
   title?: string;
 
   @IsString()

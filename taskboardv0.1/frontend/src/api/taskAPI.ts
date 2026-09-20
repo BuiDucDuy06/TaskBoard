@@ -1,11 +1,48 @@
 import { API_BASE_URL } from "../config/api";
 import type { CreateTaskInput, Task, UpdateTaskInput } from "../types";
 
+export type ApiErrorResponse = {
+  statusCode?: number;
+  message?: string | string[];
+  error?: string;
+};
+
+export class ApiError extends Error {
+  statusCode: number;
+  messages: string[];
+
+  constructor(statusCode: number, messages: string[]) {
+    super(messages.join(", "));
+    this.name = "ApiError";
+    this.statusCode = statusCode;
+    this.messages = messages;
+  }
+}
+
+async function handleApiError(response: Response): Promise<never> {
+  let data: ApiErrorResponse | null = null;
+
+  try {
+    data = await response.json();
+  } catch {
+  }
+
+  const rawMessages = data?.message;
+
+  const messages = Array.isArray(rawMessages)
+    ? rawMessages
+    : typeof rawMessages === "string"
+      ? [rawMessages]
+      : ["Request failed"];
+
+  throw new ApiError(response.status, messages);
+}
+
 export async function getTasks(): Promise<Task[]> {
   const response = await fetch(`${API_BASE_URL}/tasks`);
 
   if (!response.ok) {
-    throw new Error("Failed to fetch tasks");
+    await handleApiError(response);
   }
 
   return response.json();
@@ -24,7 +61,7 @@ export async function updateTask(
   });
 
   if (!response.ok) {
-    throw new Error("Failed to update task");
+    await handleApiError(response);
   }
 
   return response.json();
@@ -40,7 +77,7 @@ export async function createTask(data: CreateTaskInput): Promise<Task> {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to create task");
+    await handleApiError(response);
   }
 
   return response.json();
@@ -52,7 +89,7 @@ export async function deleteTask(id: number): Promise<Task> {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to delete task");
+    await handleApiError(response);
   }
 
   return response.json();

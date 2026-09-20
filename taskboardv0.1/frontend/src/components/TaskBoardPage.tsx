@@ -17,12 +17,14 @@ import { EmptyState } from "./EmptyState";
 import { TaskBoard } from "./TaskBoard";
 import { TaskFilters } from "./TaskFilters";
 import { TaskForm } from "./TaskForm";
+import type { TaskFormErrors } from "../utils/taskValidation";
 import { TaskModal } from "./TaskModal";
 import {
   getTasks,
   updateTask,
   createTask,
   deleteTask as deleteTaskApi,
+  ApiError,
 } from "../api/taskAPI";
 import useDebounce from "../hooks/useDebounce";
 import { useParams } from "react-router-dom";
@@ -83,6 +85,16 @@ export function TaskBoardPage() {
 
   const [modalError, setModalError] = useState<string | null>(null);
 
+  const [canRetrySubmit, setCanRetrySubmit] = useState(false);
+
+  const [serverErrors, setServerErrors] = useState<TaskFormErrors>({});
+
+  const [lastSubmittedValues, setLastSubmittedValues] =
+    useState<CreateTaskInput | null>(null);
+
+  const [lastSubmittedEditValues, setLastSubmittedEditValues] =
+    useState<UpdateTaskInput | null>(null);
+
   const [actionError, setActionError] = useState<string | null>(null);
 
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
@@ -94,6 +106,39 @@ export function TaskBoardPage() {
   const overdueCount = tasks.filter(isOverdue).length;
 
   const highCount = tasks.filter((task) => task.priority === "HIGH").length;
+
+  const mapServerErrors = (error: unknown): TaskFormErrors => {
+    if (!(error instanceof ApiError)) {
+      return {};
+    }
+
+    const fieldErrors: TaskFormErrors = {};
+
+    for (const message of error.messages) {
+      const lowerMessage = message.toLowerCase();
+
+      if (lowerMessage.startsWith("title ")) {
+        fieldErrors.title = message;
+        continue;
+      }
+
+      if (lowerMessage.startsWith("description ")) {
+        fieldErrors.description = message;
+        continue;
+      }
+
+      if (lowerMessage.startsWith("priority ")) {
+        fieldErrors.priority = message;
+        continue;
+      }
+
+      if (lowerMessage.startsWith("duedate ")) {
+        fieldErrors.dueDate = message;
+      }
+    }
+
+    return fieldErrors;
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -204,16 +249,20 @@ export function TaskBoardPage() {
   });
 
   const openCreateModal = () => {
+    setCanRetrySubmit(false);
     setModalMode("create");
     setEditingTaskId(null);
     setModalError(null);
+    setServerErrors({});
     setIsModalOpen(true);
   };
 
   const openEditModal = (id: number) => {
+    setCanRetrySubmit(false);
     setModalMode("edit");
     setEditingTaskId(id);
     setModalError(null);
+    setServerErrors({});
     setIsModalOpen(true);
   };
 
@@ -225,12 +274,15 @@ export function TaskBoardPage() {
     setIsModalOpen(false);
     setEditingTaskId(null);
     setModalError(null);
+    setServerErrors({});
   };
 
   const editTask = async (id: number, values: UpdateTaskInput) => {
+    setLastSubmittedEditValues(values);
     try {
       setIsSubmitting(true);
       setModalError(null);
+      setServerErrors({});
 
       await updateTask(id, values);
       await refreshTasks();
@@ -238,8 +290,22 @@ export function TaskBoardPage() {
       setIsModalOpen(false);
       setEditingTaskId(null);
       setModalError(null);
-    } catch {
+      setServerErrors({});
+    } catch (error) {
+      if (error instanceof ApiError && error.statusCode === 400) {
+        const fieldErrors = mapServerErrors(error);
+        setServerErrors(fieldErrors);
+        setCanRetrySubmit(false);
+
+        if (Object.keys(fieldErrors).length === 0) {
+          setModalError(error.messages.join(", "));
+        }
+
+        return;
+      }
+
       setModalError("Could not update task. Please try again.");
+      setCanRetrySubmit(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -294,10 +360,27 @@ export function TaskBoardPage() {
     }
   };
 
+  const retrySubmit = async () => {
+    if (modalMode === "create" && lastSubmittedValues) {
+      await handleCreateTask(lastSubmittedValues);
+      return;
+    }
+
+    if (
+      modalMode === "edit" &&
+      editingTaskId !== null &&
+      lastSubmittedEditValues
+    ) {
+      await editTask(editingTaskId, lastSubmittedEditValues);
+    }
+  };
+
   const handleCreateTask = async (values: CreateTaskInput) => {
+    setLastSubmittedValues(values);
     try {
       setIsSubmitting(true);
       setModalError(null);
+      setServerErrors({});
 
       await createTask(values);
       await refreshTasks();
@@ -305,8 +388,23 @@ export function TaskBoardPage() {
       setIsModalOpen(false);
       setEditingTaskId(null);
       setModalError(null);
-    } catch {
+      setServerErrors({});
+    } catch (error) {
+      if (error instanceof ApiError && error.statusCode === 400) {
+        const fieldErrors = mapServerErrors(error);
+
+        setServerErrors(fieldErrors);
+        setCanRetrySubmit(false);
+
+        if (Object.keys(fieldErrors).length === 0) {
+          setModalError(error.messages.join(", "));
+        }
+
+        return;
+      }
+
       setModalError("Could not create task. Please try again.");
+      setCanRetrySubmit(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -376,7 +474,18 @@ export function TaskBoardPage() {
         >
           {modalError && (
             <div className="mb-4 rounded-lg border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-300">
-              {modalError}
+              <p>{modalError}</p>
+
+              {canRetrySubmit && (
+                <button
+                  type="button"
+                  onClick={retrySubmit}
+                  disabled={isSubmitting}
+                  className="mt-3 rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Retry submit
+                </button>
+              )}
             </div>
           )}
           <TaskForm
@@ -388,12 +497,14 @@ export function TaskBoardPage() {
                     description: editingTask.description,
                     priority: editingTask.priority,
                     dueDate: editingTask.dueDate,
+                    status: editingTask.status,
                   }
                 : undefined
             }
             onSubmit={handleFormSubmit}
             onCancel={closeModal}
             isSubmitting={isSubmitting}
+            serverErrors={serverErrors}
           />
         </TaskModal>
       </div>
@@ -464,7 +575,18 @@ export function TaskBoardPage() {
       >
         {modalError && (
           <div className="mb-4 rounded-lg border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-300">
-            {modalError}
+            <p>{modalError}</p>
+
+            {canRetrySubmit && (
+              <button
+                type="button"
+                onClick={retrySubmit}
+                disabled={isSubmitting}
+                className="mt-3 rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Retry submit
+              </button>
+            )}
           </div>
         )}
         <TaskForm
@@ -476,12 +598,14 @@ export function TaskBoardPage() {
                   description: editingTask.description,
                   priority: editingTask.priority,
                   dueDate: editingTask.dueDate,
+                  status: editingTask.status,
                 }
               : undefined
           }
           onSubmit={handleFormSubmit}
           onCancel={closeModal}
           isSubmitting={isSubmitting}
+          serverErrors={serverErrors}
         />
       </TaskModal>
     </main>
