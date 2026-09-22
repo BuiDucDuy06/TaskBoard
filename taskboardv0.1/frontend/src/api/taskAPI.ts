@@ -1,5 +1,9 @@
 import { API_BASE_URL } from "../config/api";
-import type { CreateTaskInput, Task, UpdateTaskInput } from "../types";
+import type {
+  CreateTaskInput,
+  Task,
+  UpdateTaskInput,
+} from "../types";
 
 export type ApiErrorResponse = {
   statusCode?: number;
@@ -19,7 +23,9 @@ export class ApiError extends Error {
   }
 }
 
-async function handleApiError(response: Response): Promise<never> {
+async function parseErrorResponse(
+  response: Response
+): Promise<ApiError> {
   let data: ApiErrorResponse | null = null;
 
   try {
@@ -27,22 +33,53 @@ async function handleApiError(response: Response): Promise<never> {
   } catch {
   }
 
-  const rawMessages = data?.message;
+  const rawMessage = data?.message;
 
-  const messages = Array.isArray(rawMessages)
-    ? rawMessages
-    : typeof rawMessages === "string"
-      ? [rawMessages]
-      : ["Request failed"];
+  const messages =
+    Array.isArray(rawMessage)
+      ? rawMessage
+      : typeof rawMessage === "string"
+        ? [rawMessage]
+        : ["Request failed"];
 
-  throw new ApiError(response.status, messages);
+  return new ApiError(response.status, messages);
 }
 
 export async function getTasks(): Promise<Task[]> {
-  const response = await fetch(`${API_BASE_URL}/tasks`);
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/tasks`);
+  } catch {
+    throw new Error("Cannot connect to server");
+  }
 
   if (!response.ok) {
-    await handleApiError(response);
+    throw await parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
+export async function createTask(
+  data: CreateTaskInput
+): Promise<Task> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/tasks`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    throw new Error("Cannot connect to server");
+  }
+
+  if (!response.ok) {
+    throw await parseErrorResponse(response);
   }
 
   return response.json();
@@ -50,47 +87,41 @@ export async function getTasks(): Promise<Task[]> {
 
 export async function updateTask(
   id: number,
-  data: UpdateTaskInput,
+  data: UpdateTaskInput
 ): Promise<Task> {
-  const response = await fetch(`${API_BASE_URL}/tasks/${id}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/tasks/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    throw new Error("Cannot connect to server");
+  }
 
   if (!response.ok) {
-    await handleApiError(response);
+    throw await parseErrorResponse(response);
   }
 
   return response.json();
 }
 
-export async function createTask(data: CreateTaskInput): Promise<Task> {
-  const response = await fetch(`${API_BASE_URL}/tasks`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
+export async function deleteTask(id: number): Promise<void> {
+  let response: Response;
 
-  if (!response.ok) {
-    await handleApiError(response);
+  try {
+    response = await fetch(`${API_BASE_URL}/tasks/${id}`, {
+      method: "DELETE",
+    });
+  } catch {
+    throw new Error("Cannot connect to server");
   }
 
-  return response.json();
-}
-
-export async function deleteTask(id: number): Promise<Task> {
-  const response = await fetch(`${API_BASE_URL}/tasks/${id}`, {
-    method: "DELETE",
-  });
-
   if (!response.ok) {
-    await handleApiError(response);
+    throw await parseErrorResponse(response);
   }
-
-  return response.json();
 }

@@ -153,10 +153,24 @@ export function TaskBoardPage() {
         if (cancelled) return;
 
         setTasks(data);
-      } catch {
+      } catch (error) {
         if (cancelled) return;
 
-        setError("Cannot connect to server");
+        if (error instanceof ApiError) {
+          if (error.statusCode === 400) {
+            setError(error.messages.join(", "));
+          } else if (error.statusCode === 404) {
+            setError("Task list not found. Please refresh.");
+          } else if (error.statusCode === 500) {
+            setError("Something went wrong on the server. Please try again.");
+          } else {
+            setError("Something went wrong. Please try again.");
+          }
+        } else if (error instanceof Error) {
+          setError(error.message);
+        } else {
+          setError("Something went wrong. Please try again.");
+        }
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -279,6 +293,7 @@ export function TaskBoardPage() {
 
   const editTask = async (id: number, values: UpdateTaskInput) => {
     setLastSubmittedEditValues(values);
+
     try {
       setIsSubmitting(true);
       setModalError(null);
@@ -294,6 +309,7 @@ export function TaskBoardPage() {
     } catch (error) {
       if (error instanceof ApiError && error.statusCode === 400) {
         const fieldErrors = mapServerErrors(error);
+
         setServerErrors(fieldErrors);
         setCanRetrySubmit(false);
 
@@ -304,7 +320,26 @@ export function TaskBoardPage() {
         return;
       }
 
-      setModalError("Could not update task. Please try again.");
+      if (error instanceof ApiError && error.statusCode === 404) {
+        setModalError(
+          "This task no longer exists. Please refresh the task list.",
+        );
+        setCanRetrySubmit(true);
+        return;
+      }
+
+      if (error instanceof ApiError && error.statusCode === 500) {
+        setModalError("Something went wrong on the server. Please try again.");
+        setCanRetrySubmit(true);
+        return;
+      }
+
+      if (error instanceof Error) {
+        setModalError(error.message);
+      } else {
+        setModalError("Could not update task. Please try again.");
+      }
+
       setCanRetrySubmit(true);
     } finally {
       setIsSubmitting(false);
@@ -331,7 +366,24 @@ export function TaskBoardPage() {
 
       await deleteTaskApi(id);
       await refreshTasks();
-    } catch {
+    } catch (error) {
+      if (error instanceof ApiError && error.statusCode === 404) {
+        setActionError(
+          "This task no longer exists. Please refresh the task list.",
+        );
+        return;
+      }
+
+      if (error instanceof ApiError && error.statusCode === 500) {
+        setActionError("Something went wrong on the server. Please try again.");
+        return;
+      }
+
+      if (error instanceof Error) {
+        setActionError(error.message);
+        return;
+      }
+
       setActionError("Could not delete task. Please try again.");
     }
   };
@@ -377,6 +429,7 @@ export function TaskBoardPage() {
 
   const handleCreateTask = async (values: CreateTaskInput) => {
     setLastSubmittedValues(values);
+
     try {
       setIsSubmitting(true);
       setModalError(null);
@@ -403,7 +456,12 @@ export function TaskBoardPage() {
         return;
       }
 
-      setModalError("Could not create task. Please try again.");
+      if (error instanceof Error) {
+        setModalError(error.message);
+      } else {
+        setModalError("Could not create task. Please try again.");
+      }
+
       setCanRetrySubmit(true);
     } finally {
       setIsSubmitting(false);
